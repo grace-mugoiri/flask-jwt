@@ -62,4 +62,19 @@ def get_task(id):
 	task = Task.query.get(id)
 	return task_schema.jsonify(task)
 
+@app.route('/tasks/<id>')
+def update_task(id):
+	task = Taks.query.get(id)
+	title = request.json['title']
+	description = request.json['description']
+
+	task.title = title
+	task.description = description
+
+	db.session.commit()
+	return task_schema.jsonify(task)
+
+
+
+
 
