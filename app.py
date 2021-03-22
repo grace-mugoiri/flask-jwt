@@ -1,16 +1,25 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, session, logging, url_for
 from flask_sqlalchemy import SQLAlchemy
+from forms import LoginForm, RegisterForm
+from werkzeug.security imort generate_password_hash, check_password
 from flask_marshmallow import Marshmallow
 
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+app.config['SECRET_KEY'] = 'thisismysecretkey'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-
+class User(db.Model):
+	__tablename__ = 'usertable'
+	id = db.Column(db.Integer, primary_key=True)
+	name = db.Column(db.String(50), unique=True)
+	username = db.Column(db.String(20), unique=True)
+	email = db.Column(db.String(50), unique=True)
+	password = db.Column(db.String(256), unique=True)
 # db. Creating task model using sqlalchemy
 class Task(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
@@ -81,6 +90,42 @@ def delete_task(id):
 	db.session.delete(task)
 	db.session.commit()
 	return task_schema.jsonify(task)
+
+@app.route('/register/', methods = ["GET", "POST"])
+def register():
+	form = RegisterForm(request.form)
+	if requested.method == "POST" and form.validate():
+		hashed_password = generate_password_hash(form.password.data, method="sha256")
+		new_user = User(
+			name=form.name.data,
+			username=form.username.data,
+			email=form.email.data,
+			password = hashed_password
+		)
+		db.session.add(new_user)
+		db.session.commit()
+
+		flash("You have successfully registered", "success")
+		return redirect(url_for("login"))
+	else:
+		return render_template('register.html', form=form)
+
+
+@app.route('/login/', methods = ["GET", "POST"])
+def login():
+	form = LoginForm(request.form)
+	if requested.method == "POST" and form.validate():
+		user = User.query.filter_by(email=form.email.data).first()
+		if user:
+			if check_password_hash(user.password, form.password.data):
+				flash("You have successfully logged in", "success")
+				session["logged_in"] = Truesession["email"] = user.email
+				session["username"] = user.username
+				return redirect(url_for 'home')
+			else:
+				flash("username or Password Incorrect", "Danger")
+		return render_template('login.html', form=form)
+
 
 if __name__ == "__main__":
 	app.run(debug=True)
